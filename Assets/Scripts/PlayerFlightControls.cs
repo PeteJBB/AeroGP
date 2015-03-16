@@ -11,22 +11,11 @@ using System.Collections;
 /// </summary>
 public class PlayerFlightControls : MonoBehaviour
 {
-    public Texture GunsightTexture;
-    public Texture FlightPathTexture;
+	private const float _pitchStrength = 5000;//48;//24;
+	private const float _yawStrength = 2000;//21;//30;
+	private const float _rollStrength = 2400;//15;//12;
 
-    public AnimationCurve SurfaceControlBySpeed;
-    private const float _surfaceControlTopSpeed = 100f;
-
-    public AnimationCurve LiftBySpeed;
-    private const float _liftTopSpeed = 90f;
-
-	private const float _pitchStrength = 96;//48;//24;
-	private const float _yawStrength = 42;//21;//30;
-	private const float _rollStrength = 30;//15;//12;
-	private const float _brakeStrength = 0.5f;//0.25f;
-    private const float _wheelBrakesMultiplier = 40f;
-	
-	const float _enginePower = 1000;//550;
+	const float _enginePower = 40000;//550;
 
     private float _pitchControl = 0;
     private float _yawControl = 0;
@@ -37,9 +26,7 @@ public class PlayerFlightControls : MonoBehaviour
 	private Vector3 dragVector;
 	private float deltaMultiplier;
     private float controlCurve;
-
-    private WheelCollider[] _wheels;
-
+	
     public float PitchControl { get { return _pitchControl; } }
     public float YawControl { get { return _yawControl; } }
     public float RollControl { get { return _rollControl; } }
@@ -51,8 +38,7 @@ public class PlayerFlightControls : MonoBehaviour
 	void Start()
 	{
 		rigidbody = GetComponent<Rigidbody> ();
-		rigidbody.centerOfMass = new Vector3(0, -0.25f, 0f);
-	    _wheels = GetComponentsInChildren<WheelCollider>();
+		//rigidbody.centerOfMass = new Vector3(0, -0.25f, 0f);
 	}
 	
 	// Update is called once per frame
@@ -73,9 +59,11 @@ public class PlayerFlightControls : MonoBehaviour
     void UpdateFlightControls()
 	{
         // throttle
-        var throt = InputManager.GetAxis(InputMapping.Throttle);
-        _throttle += throt * Time.deltaTime;
-        _throttle = Mathf.Clamp(_throttle, 0, 1);
+//        var throt = InputManager.GetAxis(InputMapping.Throttle);
+//        _throttle += throt * Time.deltaTime;
+//        _throttle = Mathf.Clamp(_throttle, 0, 1);
+		_throttle = InputManager.GetAxis (InputMapping.Throttle);
+		_throttle = Mathf.Clamp(_throttle, 0, 1);
 
         // surfaces
         _pitchControl = InputManager.GetAxis(InputMapping.Pitch);
@@ -100,7 +88,7 @@ public class PlayerFlightControls : MonoBehaviour
         var speed = relativeVel.z;
         
         // pitch / yaw / roll
-        controlCurve = SurfaceControlBySpeed.Evaluate(speed / _surfaceControlTopSpeed);
+		controlCurve = 1;//SurfaceControlBySpeed.Evaluate(speed / _surfaceControlTopSpeed);
         var pitch = _pitchControl * _pitchStrength * controlCurve;
         rigidbody.AddRelativeTorque(new Vector3(pitch * deltaMultiplier, 0, 0));
 
@@ -115,73 +103,61 @@ public class PlayerFlightControls : MonoBehaviour
         rigidbody.AddRelativeForce(new Vector3(0, 0, thrust));
 
         // air brakes
-        var brakeForce = (_brakesControl * -speed * _brakeStrength);
-
-        // wheel brakes
-        if (_brakesControl > 0 && _wheels.All(x => x.isGrounded))
-        {
-            brakeForce *= _wheelBrakesMultiplier;
-            brakeForce += brakeForce > 0
-                ? 50
-                : -50;
-        }
-        rigidbody.AddRelativeForce(0, 0, brakeForce * deltaMultiplier);
-
-        // wheel steering (taxi)
-//        Transform _wheel_frontleft = transform.FindChild("wheel_frontleft");
-//        Transform _wheel_frontright = transform.FindChild("wheel_frontright");
-//        var steer = _yawControl * 10f;
-//        _wheel_frontleft.localRotation = Quaternion.Euler(0, steer, 0);
-//        _wheel_frontright.localRotation = Quaternion.Euler(0, steer, 0);
+        //var brakeForce = (_brakesControl * -speed * _brakeStrength);
+		var brakeForce = _brakesControl * -_enginePower * deltaMultiplier;
+		rigidbody.AddRelativeForce(new Vector3(0, 0, brakeForce));
 
         // lift
-        var liftZero = rigidbody.mass * Physics.gravity.magnitude * 1.05f; // enough lift for takeoff / level flight
-        var lift = LiftBySpeed.Evaluate(speed / _liftTopSpeed) * liftZero;
-        rigidbody.AddRelativeForce(new Vector3(0, lift * deltaMultiplier, 0));
+//        var liftZero = rigidbody.mass * Physics.gravity.magnitude * 1.05f; // enough lift for takeoff / level flight
+//        var lift = LiftBySpeed.Evaluate(speed / _liftTopSpeed) * liftZero;
+//        rigidbody.AddRelativeForce(new Vector3(0, lift * deltaMultiplier, 0));
+
 
         // drag by facing area
+		var dragCoeffs = new Vector3 (50f, 200.0f, 0.5f);
         dragVector = new Vector3(
-            -relativeVel.x * Mathf.Abs(relativeVel.x) * 0.75f,
-            -relativeVel.y * Mathf.Abs(relativeVel.y) * 1f,
-            -relativeVel.z * Mathf.Abs(relativeVel.z) * 0.025f
+			-relativeVel.x * Mathf.Abs(relativeVel.x) * dragCoeffs.x,
+			-relativeVel.y * Mathf.Abs(relativeVel.y) * dragCoeffs.y,
+			-relativeVel.z * Mathf.Abs(relativeVel.z) * dragCoeffs.z
         );
         rigidbody.AddRelativeForce(dragVector * deltaMultiplier);
 
         // extra lift due to Angle Of Attack
-        var aoa = Vector3.Angle(transform.forward.IgnoreX(), rigidbody.velocity.IgnoreX());
-        if (aoa < 90)
-        {
-            if (aoa > 45)
-                aoa = 45 + (45 - aoa);
-            if (relativeVel.y > 0)
-                aoa = -aoa;
-
-            var extraLift = Mathf.Clamp(aoa / 45f, -1, 1) * lift;
-            
-            var aoaVector = new Vector3(
-                0,
-                extraLift,
-                0
-                );
-            rigidbody.AddRelativeForce(aoaVector * deltaMultiplier);
-        }
+//        var aoa = Vector3.Angle(transform.forward.IgnoreX(), rigidbody.velocity.IgnoreX());
+//        if (aoa < 90)
+//        {
+//            if (aoa > 45)
+//                aoa = 45 + (45 - aoa);
+//            if (relativeVel.y > 0)
+//                aoa = -aoa;
+//
+//            var extraLift = Mathf.Clamp(aoa / 45f, -1, 1) * lift;
+//            
+//            var aoaVector = new Vector3(
+//                0,
+//                extraLift,
+//                0
+//                );
+//            rigidbody.AddRelativeForce(aoaVector * deltaMultiplier);
+//        }
         // weathervaning
-        var correctionVector = new Vector3(
-            -relativeVel.y * Mathf.Abs(relativeVel.y) * 0.03f,
-            relativeVel.x * Mathf.Abs(relativeVel.x) * 0.05f, //0.1f,
-            0
-        );
-        rigidbody.AddRelativeTorque(correctionVector * deltaMultiplier);
+//        var correctionVector = new Vector3(
+//            -relativeVel.y * Mathf.Abs(relativeVel.y) * 0.03f,
+//            relativeVel.x * Mathf.Abs(relativeVel.x) * 0.05f, //0.1f,
+//            0
+//        );
+        //rigidbody.AddRelativeTorque(correctionVector * deltaMultiplier);
     }
 	
 	void OnGUI()
 	{
 
-        //GUI.TextArea(new Rect(20, 50, 100, 20), "Throttle: " + Mathf.Round(_throttle * 100) + "%", GuiStyles.BasicGuiStyle);
+        GUI.TextArea(new Rect(20, 50, 100, 20), "Throttle: " + Mathf.Round(_throttle * 100) + "%", GuiStyles.BasicGuiStyle);
 
-        //// control curve
-        //GUI.TextArea(new Rect(20, 140, 100, 20), "Control Curve: " + controlCurve, GuiStyles.BasicGuiStyle);
-        //GUI.TextArea(new Rect(20, 170, 100, 20), "Brakes: " + _brakesControl, GuiStyles.BasicGuiStyle);
+        // control curve
+		var speedKph = this.rigidbody.velocity.magnitude * 3.6f;
+        GUI.TextArea(new Rect(20, 140, 100, 20), "Speed: " + Math.Round(speedKph) + " km/h", GuiStyles.BasicGuiStyle);
+        GUI.TextArea(new Rect(20, 170, 100, 20), "Brakes: " + _brakesControl, GuiStyles.BasicGuiStyle);
 
 	}
 
