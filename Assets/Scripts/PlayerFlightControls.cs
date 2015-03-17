@@ -11,9 +11,9 @@ using System.Collections;
 /// </summary>
 public class PlayerFlightControls : MonoBehaviour
 {
-	private const float _pitchStrength = 5000;//48;//24;
-	private const float _yawStrength = 2000;//21;//30;
-	private const float _rollStrength = 2400;//15;//12;
+	private const float _pitchStrength = 80000;//48;//24;
+	private const float _yawStrength = 32000;//21;//30;
+	private const float _rollStrength = 60000;//15;//12;
 
 	const float _enginePower = 40000;//550;
 
@@ -39,6 +39,7 @@ public class PlayerFlightControls : MonoBehaviour
 	{
 		rigidbody = GetComponent<Rigidbody> ();
 		//rigidbody.centerOfMass = new Vector3(0, -0.25f, 0f);
+		rigidbody.inertiaTensorRotation = Quaternion.Euler(1,1,1);
 	}
 	
 	// Update is called once per frame
@@ -114,7 +115,7 @@ public class PlayerFlightControls : MonoBehaviour
 
 
         // drag by facing area
-		var dragCoeffs = new Vector3 (50f, 200.0f, 0.5f);
+		var dragCoeffs = new Vector3 (50f, 100.0f, 0.5f);
         dragVector = new Vector3(
 			-relativeVel.x * Mathf.Abs(relativeVel.x) * dragCoeffs.x,
 			-relativeVel.y * Mathf.Abs(relativeVel.y) * dragCoeffs.y,

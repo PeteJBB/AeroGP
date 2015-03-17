@@ -165,44 +165,13 @@ public class InputMapping
 
     public static InputMapping Throttle = new InputMapping()
     {
-        JoystickAxis = XboxAxis.LeftStickY,
+        JoystickAxis = XboxAxis.Triggers,
         PositiveKey = KeyCode.W,
         NegativeKey = KeyCode.S,
         InvertJoystick = true,
     };
 
-    public static InputMapping Fire = new InputMapping()
-    {
-        JoystickAxis = XboxAxis.Triggers,
-        InvertJoystick = true,
-        PositiveKey = KeyCode.Space
-    };
-
-    public static InputMapping ChangeWeapon = new InputMapping()
-    {
-        JoystickButton = XboxButtons.Y,
-        PositiveKey = KeyCode.F
-    };
-
-    public static InputMapping FireSecondary = new InputMapping()
-    {
-        JoystickButton = XboxButtons.X,
-        InvertJoystick = false,
-        PositiveKey = KeyCode.E
-    };
-
-    public static InputMapping Transform = new InputMapping()
-    {
-        JoystickButton = XboxButtons.X,
-        PositiveKey = KeyCode.Return
-    };
-
-    public static InputMapping Map = new InputMapping()
-    {
-        JoystickButton = XboxButtons.Back,
-        PositiveKey = KeyCode.M
-    };
-
+    
     public static InputMapping LookForward = new InputMapping()
     {
         JoystickAxis = XboxAxis.DPadY,
